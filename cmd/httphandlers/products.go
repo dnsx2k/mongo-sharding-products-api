@@ -5,6 +5,7 @@ import (
 
 	"github.com/dnsx2k/mongo-sharding-products-api/pkg/lookupclient"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -36,10 +37,23 @@ func (sc *HTTPHandlerContext) handleGet(gCtx *gin.Context) {
 	}
 
 	dbLocation := sc.mongoClientPrimary
-	switch location {
-	case "hot":
+	if location != "" {
 		dbLocation = sc.mongoClientHot
 	}
 
-	// TODO: Query mongo
+	collection := dbLocation.Database("customSharding").Collection("products")
+	filter := bson.M{"id": key}
+	res := collection.FindOne(gCtx, filter, nil)
+	if res.Err() != nil {
+		gCtx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	var response map[string]interface{}
+	if err := res.Decode(&response); err != nil {
+		gCtx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	gCtx.JSON(http.StatusOK, response)
 }
